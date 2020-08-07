@@ -14,6 +14,7 @@ class Field {
     this._height = fieldArray.length;
     this._width = fieldArray[0].length;
 
+    // fill wasHere with false on initialization
     this._wasHere = [];
     for (let i = 0; i < this._height; i++) {
       let subWas = new Array(this._width);
@@ -22,6 +23,7 @@ class Field {
     }
   }
 
+  // getters
   get height() {
     return this._height;
   }
@@ -34,6 +36,7 @@ class Field {
     return this._currentPlayerPos;
   }
 
+  // helper function to print out the field in an easy to read grid
   print() {
     for (let i = 0; i < this._fieldArray.length; i++) {
       let line = '';
@@ -44,21 +47,14 @@ class Field {
     }
   }
 
-  printWas() {
-    for (let i = 0; i < this._wasHere.length; i++) {
-      let line = '';
-      this._wasHere[i].forEach(element => {
-        line = line + element;
-      });
-      console.log(line);
-    }
-  }
-
+  // generates field
   static generateField(h, w, percent) {
+    // 100 percent holes makes no sense and is unsolveable, lower to hard value
     if (percent === 100) {
       console.log('100% holes not permitted, lowering...');
-      percent = 75;
+      percent = 60;
     }
+    // actual number of holes based on percent and field dimensions
     const numHoles = Math.floor((h * w) * (percent / 100));
     const fieldArray = [];
 
@@ -76,7 +72,7 @@ class Field {
     fieldArray[randCoord[0]][randCoord[1]] = pathCharacter;
     fieldArray.push(randCoord);
 
-    // fill in holes based on percent
+    // fill in holes based on actual number derived from percent
     let k = 0;
     while (k < numHoles) {
       randCoord = Field.getRandomFieldPos(h, w);
@@ -96,12 +92,14 @@ class Field {
     return fieldArray;
   }
 
+  // helper function to get random field position coordinates
   static getRandomFieldPos(h, w) {
     let randX = Math.floor(Math.random() * h);
     let randY = Math.floor(Math.random() * w);
     return [randX, randY];
   }
 
+  // "translates" user char input into actual x or y change
   tryDirection(dir) {
     let currY = this._currentPlayerPos[0];
     let currX = this._currentPlayerPos[1];
@@ -127,12 +125,15 @@ class Field {
         break;
     }
 
+    // if attempt to move outside field dimensions, game over
     if (newX < 0 || newX >= this._width || newY < 0 || newY >= this._height) {
       gameEnded = true;
       console.log('You went off the edge! Game over.');
     }
     else {
+      // other options, clears map and reprints no matter the result
       switch(this._fieldArray[newY][newX]) {
+        // player moves into hole space, game over
         case hole:
           console.log('\x1Bc');
           this._fieldArray[currY][currX] = fieldCharacter;
@@ -142,6 +143,7 @@ class Field {
           gameEnded = true;
           break;
         case hat:
+          // player moves into hat space, win
           console.log('\x1Bc');
           this._fieldArray[currY][currX] = fieldCharacter;
           this._fieldArray[newY][newX] = pathCharacter;
@@ -150,6 +152,7 @@ class Field {
           gameEnded = true;
           break;
         case fieldCharacter:
+          // player moves into neutral ground space, nothing
           console.log('\x1Bc');
           this._fieldArray[currY][currX] = fieldCharacter;
           this._fieldArray[newY][newX] = pathCharacter;
@@ -160,6 +163,8 @@ class Field {
     }
   }
 
+  // verification function close to a maze solver that recursively tests paths
+  // to ensure that the generated field is actually solveable
   verify(coords) {
     let coordY = coords[0];
     let coordX = coords[1];
@@ -194,6 +199,7 @@ class Field {
   }
 }
 
+// initial prompt for user to select difficulty
 const gameIntro = () => {
   console.log('Map: Small = s, Medium = m, Large = l');
   console.log('Difficulty: Easy = 1, Medium = 2, Hard = 3');
@@ -205,10 +211,15 @@ const gameIntro = () => {
   runGame(size, difficulty);
 }
 
+// the main game function that continuously loops for player input
 const runGame = (size, difficulty) => {
   gameEnded = false;
   console.log('\x1Bc');
 
+  // sets dimensions and hole percent based on player input
+  // hole percentages higher than 50 can basically only result in a successful
+  // field generation where the player starts 1-2 spaces away from the goal
+  // which is not great
   let hw = [], perc = 0;
   switch(size) {
     case 's':
@@ -226,25 +237,29 @@ const runGame = (size, difficulty) => {
       perc = 20;
       break;
     case '2':
-      perc = 40;
+      perc = 35;
       break;
     case '3':
-      perc = 60;
+      perc = 50;
       break;
   }
 
+  // generate field
   console.log('Generating game field...');
   let gameField = new Field(Field.generateField(hw[0], hw[1], perc));
   while (!gameField.verify(gameField.playerCoords)) {
     gameField = new Field(Field.generateField(hw[0], hw[1], perc));
   }
+  // clear console commands and print map
   console.log('\x1Bc');
   gameField.print();
 
+  // loops that continuously takes user directional inputs
   while (!gameEnded) {
     let dir = prompt('Enter a direction: ');
     gameField.tryDirection(dir);
   }
+  // replay or quit prompt for end
   let replay = prompt('Enter R to replay or X to quit: ');
   if (replay === 'R' || replay === 'r') {
     console.log('\x1Bc');
